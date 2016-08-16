@@ -1177,7 +1177,9 @@ g_legend<-function(a.gplot){
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-plot.T1T2 <- function(T1T2.object,file,taxa.annotations.df, outgroup.taxon) {
+# Eventually incorporate the display.trees as phylo4d trees from phylobase
+
+plot.T1T2 <- function(T1T2.object, file) {
 
 	display.trees <- lapply(
 		T1T2.object$Unique.quartets,
@@ -1188,31 +1190,13 @@ plot.T1T2 <- function(T1T2.object,file,taxa.annotations.df, outgroup.taxon) {
 		as.character(T1T2.object$Topology.counts),
 		sep = ", ")
 
-	anno.df <- taxa.annotations.df[
-		which(taxa.annotations.df$tip.label %in%
-			display.trees$tip.label),]
-
-	trees <- lapply(
-		names(display.trees),
-		function(x) {
-			tree <- ggtree(
-				display.trees[[x]],
-				branch.length = "none") %<+%
-				anno.df +
-				geom_tippoint(
-					aes(color = species),
-					size = 5,
-					alpha = 0.75) +
-				ggtitle(names(display.trees[x]))
-			return(tree)
-		}
-		)
-	tmp.tree <- trees[[1]] +
-		theme(
-			legend.position = "bottom",
-			legend.box = "horizontal") +
-		guides(col = guide_legend(nrow = 1))
-	trees.legend <- g_legend(tmp.tree)
+	class(display.trees) <- "multiPhylo"
+	trees <- ggtree(
+		display.trees,
+		branch.length = "none") +
+		geom_tiplab(size = 3) +
+		ggplot2::xlim(0, 10) +
+		facet_wrap(~.id, scale = "free", ncol = 1)
 
 	T1T2.melted <- melt(T1T2.object$T1T2.table)
 	boxplot <- ggplot(
@@ -1220,15 +1204,13 @@ plot.T1T2 <- function(T1T2.object,file,taxa.annotations.df, outgroup.taxon) {
 			aes(factor(Topology.IDs), value)) +
 		geom_boxplot() +
 		facet_grid(. ~ variable) +
-		ggtitle(paste(display.trees$tip.label, collapse = ", "))
+		ggtitle(paste(display.trees[[1]]$tip.label, collapse = "-"))
 
 	pdf(file, paper = "USr", width = 11)
 	grid.arrange(
-		trees[[1]], trees[[2]], trees[[3]], trees.legend, boxplot,
+		trees, boxplot,
 		ncol = 2,
-		layout_matrix = cbind(c(1,2,3,4), c(5,5,5,4)),
-		widths = c(0.25,1),
-		heights = c(1,1,1,0.3))
+		widths = c(0.25,1))
 	dev.off()
 
 }
